@@ -3,403 +3,222 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>MapleLand Bottom UI Widget</title>
+<title>Maple HUD Widget</title>
 <style>
-  :root{
-    --scale: 1;               /* 전체 크기 조절 */
-    --w: calc(1280px * var(--scale));
-    --h: calc(86px * var(--scale));
-
-    --frame1:#cfd3d8;
-    --frame2:#8f969e;
-    --inner1:#3a3f45;
-    --inner2:#22262b;
-
-    --text:#f3f6fb;
-    --shadow:#0b0d10;
-
-    --hp:#d84a4a;
-    --mp:#3a74d6;
-    --exp:#7fd34a;
-
-    --thin: 1px;
-    --r: 6px;
-
-    --font: "Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif;
-  }
-
   html,body{ margin:0; background:transparent; }
-  .wrap{
-    width:var(--w);
-    height:var(--h);
-    display:flex;
-    align-items:flex-end;
-    justify-content:center;
+
+  :root{
+    --scale: 1;              /* OBS에서 전체 크기 조절 (예: 1.2) */
+    --hudW: calc(1280px * var(--scale));
+    --hudH: calc(86px * var(--scale));
+    --font: "Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif;
+    --shadow: rgba(0,0,0,0.9);
   }
 
-  /* 메탈 프레임 느낌 */
-  .frame{
-    width: calc(var(--w) - 8px);
-    height: calc(var(--h) - 8px);
-    background: linear-gradient(180deg, var(--frame1), #b6bcc3 40%, var(--frame2));
-    border-radius: var(--r);
-    box-shadow:
-      0 2px 10px rgba(0,0,0,0.35),
-      0 0 0 2px rgba(0,0,0,0.25) inset;
-    padding: 6px;
-    box-sizing:border-box;
+  /* 전체 캔버스 */
+  .stage{
+    width: var(--hudW);
+    height: var(--hudH);
+    position: relative;
+    overflow: hidden;
   }
 
-  .panel{
-    width:100%;
-    height:100%;
-    background: linear-gradient(180deg, var(--inner1), var(--inner2));
-    border-radius: calc(var(--r) - 2px);
-    box-shadow:
-      0 0 0 1px rgba(255,255,255,0.12) inset,
-      0 0 0 2px rgba(0,0,0,0.35) inset;
-    display:flex;
-    align-items:center;
-    gap: 10px;
-    padding: 8px 10px;
-    box-sizing:border-box;
-    font-family: var(--font);
-    color: var(--text);
-    text-shadow: 1px 1px 0 var(--shadow);
+  /* 네가 자른 하단 HUD 스킨 */
+  .skin{
+    position:absolute; inset:0;
+    background: url("./hud.png") no-repeat;
+    background-size: 100% 100%;
+    image-rendering: auto;
+    pointer-events:none;
   }
 
-  /* LV 박스 */
-  .lvBox{
-    width: calc(92px * var(--scale));
-    height: calc(58px * var(--scale));
-    border-radius: 6px;
-    background: linear-gradient(180deg,#1f2328,#101316);
-    box-shadow:
-      0 0 0 1px rgba(255,255,255,0.08) inset,
-      0 0 0 2px rgba(0,0,0,0.45) inset;
-    display:flex;
-    flex-direction:column;
-    justify-content:center;
-    align-items:center;
-    gap: 4px;
-    flex: 0 0 auto;
-  }
-  .lvLabel{
-    font-weight:800;
-    font-size: calc(12px * var(--scale));
-    color:#d8dde6;
-    opacity:0.9;
-    letter-spacing:0.5px;
-  }
-  .lvValue{
-    font-weight:900;
-    font-size: calc(18px * var(--scale));
-    color:#ffd98a;
-    letter-spacing:0.8px;
-  }
-
-  /* 이름 영역(메이플처럼 2줄) */
-  .nameBlock{
-    width: calc(250px * var(--scale));
-    display:flex;
-    flex-direction:column;
-    gap: 2px;
-    flex: 0 0 auto;
-  }
-  .nameLine1{
-    font-weight:800;
-    font-size: calc(14px * var(--scale));
-    white-space:nowrap;
-    overflow:hidden;
-    text-overflow:ellipsis;
-  }
-  .nameLine2{
-    font-weight:800;
-    font-size: calc(13px * var(--scale));
-    color:#cbd6ff;
-    opacity:0.95;
-    white-space:nowrap;
-    overflow:hidden;
-    text-overflow:ellipsis;
-  }
-
-  /* 스탯 영역 */
-  .stats{
-    display:flex;
-    flex-direction:column;
-    gap: 6px;
-    flex: 1 1 auto;
-    min-width: 0;
-  }
-
-  .row{
-    display:flex;
-    align-items:center;
-    gap: 8px;
-    min-width:0;
-  }
-
-  .tag{
-    width: calc(38px * var(--scale));
-    text-align:right;
-    font-weight:900;
-    font-size: calc(13px * var(--scale));
-    opacity:0.95;
-  }
-
-  .bar{
-    position:relative;
-    height: calc(10px * var(--scale));
-    flex: 1 1 auto;
-    min-width: 140px;
-    border-radius: 4px;
-    background: rgba(255,255,255,0.08);
-    box-shadow:
-      0 0 0 1px rgba(255,255,255,0.12) inset,
-      0 0 0 2px rgba(0,0,0,0.35) inset;
-    overflow:hidden;
-  }
-  .fill{
+  /* 글자 스타일(스샷 느낌으로 살짝 두껍게) */
+  .txt{
     position:absolute;
-    inset:0;
+    font-family: var(--font);
+    font-weight: 800;
+    font-size: calc(14px * var(--scale));
+    color: #f5f5f5;
+    text-shadow:
+      1px 1px 0 var(--shadow),
+      -1px 1px 0 var(--shadow),
+      1px -1px 0 var(--shadow),
+      -1px -1px 0 var(--shadow);
+    white-space:nowrap;
+    user-select:none;
+  }
+
+  /* 게이지(색만 덮어씌우기) */
+  .barMask{
+    position:absolute;
+    overflow:hidden;        /* 스킨 위에서 막(마스크) 역할 */
+    border-radius: 2px;
+  }
+  .barFill{
+    height:100%;
+    width:100%;
     transform-origin:left center;
     transform: scaleX(1);
   }
-  .hpFill{ background: linear-gradient(180deg, #ff7a7a, var(--hp)); }
-  .mpFill{ background: linear-gradient(180deg, #6aa0ff, var(--mp)); }
-  .expFill{ background: linear-gradient(180deg, #b6ff86, var(--exp)); }
 
-  .nums{
-    width: calc(140px * var(--scale));
-    font-variant-numeric: tabular-nums;
-    font-weight:900;
-    font-size: calc(13px * var(--scale));
-    text-align:left;
-    white-space:nowrap;
-  }
+  /* 스샷 느낌 색감 */
+  .hpFill{ background: linear-gradient(180deg,#ff7d7d,#d13f3f); }
+  .mpFill{ background: linear-gradient(180deg,#7aa6ff,#2f69d6); }
+  .expFill{ background: linear-gradient(180deg,#b7ff6e,#55c52b); }
 
-  .expText{
-    width: calc(190px * var(--scale));
-    text-align:left;
-    font-variant-numeric: tabular-nums;
-    font-weight:900;
-    font-size: calc(13px * var(--scale));
-    white-space:nowrap;
-  }
+  /* ====== 좌표 튜닝 구역 ======
+     hud.png 를 "1280x86" 정도로 잘랐다는 가정으로
+     아래 좌표를 맞춰두었어.
+     만약 너의 hud.png 크기가 다르면,
+     이 좌표만 살짝 움직이면 1:1로 딱 맞는다.
+  */
 
-  /* 옵션 버튼(원하면 지워도 됨) */
-  .controls{
-    display:flex;
-    flex-direction:column;
-    gap:6px;
-    flex: 0 0 auto;
-  }
-  .btn{
-    font-size: 12px;
-    padding: 6px 8px;
-    border-radius: 6px;
-    border: 1px solid rgba(255,255,255,0.18);
-    background: rgba(0,0,0,0.22);
-    color:#fff;
-    cursor:pointer;
-    user-select:none;
-  }
-  .btn:hover{ background: rgba(0,0,0,0.35); }
+  /* LV 숫자(왼쪽 LV 박스 안) */
+  #lv { left: calc(78px * var(--scale)); top: calc(52px * var(--scale)); transform: translate(-50%,-50%); }
+
+  /* 직업/닉네임(왼쪽 중앙) */
+  #job { left: calc(150px * var(--scale)); top: calc(44px * var(--scale)); }
+  #nick{ left: calc(150px * var(--scale)); top: calc(62px * var(--scale)); }
+
+  /* HP/MP/EXP 숫자 위치(바 오른쪽 텍스트) */
+  #hpText { left: calc(395px * var(--scale)); top: calc(44px * var(--scale)); }
+  #mpText { left: calc(395px * var(--scale)); top: calc(62px * var(--scale)); }
+  #expText{ left: calc(620px * var(--scale)); top: calc(53px * var(--scale)); transform: translateY(-50%); }
+
+  /* 바 마스크 영역(스킨의 바 위치에 맞춰 덮어칠 영역) */
+  #hpMask { left: calc(210px * var(--scale)); top: calc(40px * var(--scale)); width: calc(170px * var(--scale)); height: calc(10px * var(--scale)); }
+  #mpMask { left: calc(210px * var(--scale)); top: calc(58px * var(--scale)); width: calc(170px * var(--scale)); height: calc(10px * var(--scale)); }
+  #expMask{ left: calc(470px * var(--scale)); top: calc(49px * var(--scale)); width: calc(140px * var(--scale)); height: calc(10px * var(--scale)); transform: translateY(-50%); }
+
+  /* (선택) 클릭 방지 */
+  .stage *{ pointer-events:none; }
 </style>
 </head>
 
 <body>
-<div class="wrap">
-  <div class="frame">
-    <div class="panel">
-      <div class="lvBox">
-        <div class="lvLabel">LV.</div>
-        <div class="lvValue" id="lvText">001</div>
-      </div>
+<div class="stage">
+  <!-- 게이지 색(스킨 아래/위는 취향. 보통 스킨 "아래"에 두면 이질감 줄어듦) -->
+  <div class="barMask" id="hpMask"><div class="barFill hpFill" id="hpFill"></div></div>
+  <div class="barMask" id="mpMask"><div class="barFill mpFill" id="mpFill"></div></div>
+  <div class="barMask" id="expMask"><div class="barFill expFill" id="expFill"></div></div>
 
-      <div class="nameBlock">
-        <div class="nameLine1" id="line1">배달파트너</div>
-        <div class="nameLine2" id="line2">포로리</div>
-      </div>
+  <!-- 스킨 -->
+  <div class="skin"></div>
 
-      <div class="stats">
-        <div class="row">
-          <div class="tag">HP</div>
-          <div class="bar"><div class="fill hpFill" id="hpFill"></div></div>
-          <div class="nums" id="hpNums">250/250</div>
-        </div>
-        <div class="row">
-          <div class="tag">MP</div>
-          <div class="bar"><div class="fill mpFill" id="mpFill"></div></div>
-          <div class="nums" id="mpNums">250/250</div>
-        </div>
-        <div class="row">
-          <div class="tag">EXP</div>
-          <div class="bar"><div class="fill expFill" id="expFill"></div></div>
-          <div class="expText" id="expText">0 [0.00%]</div>
-        </div>
-      </div>
+  <!-- 텍스트 오버레이 -->
+  <div class="txt" id="lv">107</div>
 
-      <div class="controls">
-        <div class="btn" id="btnRename">이름 수정</div>
-        <div class="btn" id="btnReset">초기화</div>
-      </div>
+  <div class="txt" id="job">배달파트너</div>
+  <div class="txt" id="nick">포로리왓썰</div>
 
-    </div>
-  </div>
+  <div class="txt" id="hpText">250 / 250</div>
+  <div class="txt" id="mpText">250 / 250</div>
+  <div class="txt" id="expText">EXP. 0 [0.00%]</div>
 </div>
 
 <script>
 (() => {
-  const STORAGE_KEY = "porori_maple_bottom_ui_v1";
+  const STORAGE_KEY = "porori_maple_hud_save_v1";
 
-  // 규칙
-  const expPerHour = 1;            // 시간당 EXP +1
-  const expNeeded = 100;           // 100이면 100%
+  // 규칙: 시간당 EXP +1, 100%면 레벨업, 레벨업 시 HP/MP Max +50
+  const expPerHour = 1;
+  const expNeeded = 100;
   const expPerMs = expPerHour / 3600000;
 
   const defaultState = {
-    title: "배달파트너",
-    name: "포로리",
     level: 1,
-
-    hpMax: 250,
-    mpMax: 250,
-    hp: 250,
-    mp: 250,
-
-    exp: 0,          // 0~100
+    hpMax: 250, mpMax: 250,
+    exp: 0,
     lastTs: Date.now()
   };
 
   const $ = (id) => document.getElementById(id);
-  const lvText = $("lvText");
-  const line1 = $("line1");
-  const line2 = $("line2");
-  const hpFill = $("hpFill");
-  const mpFill = $("mpFill");
-  const expFill = $("expFill");
-  const hpNums = $("hpNums");
-  const mpNums = $("mpNums");
-  const expText = $("expText");
 
-  let state = loadState();
+  let state = load();
 
-  function loadState(){
+  function load(){
     try{
       const raw = localStorage.getItem(STORAGE_KEY);
       if(!raw) return structuredClone(defaultState);
-      const obj = JSON.parse(raw);
-      const s = { ...structuredClone(defaultState), ...obj };
-
-      s.level = Math.max(1, Math.floor(s.level || 1));
-      s.hpMax = Math.max(1, Math.floor(s.hpMax || 250));
-      s.mpMax = Math.max(1, Math.floor(s.mpMax || 250));
-      s.hp = s.hpMax;
-      s.mp = s.mpMax;
-
-      s.exp = Math.max(0, Number(s.exp || 0));
-      s.lastTs = Number(s.lastTs || Date.now());
+      const s = { ...structuredClone(defaultState), ...JSON.parse(raw) };
+      s.level = Math.max(1, Math.floor(s.level||1));
+      s.hpMax = Math.max(1, Math.floor(s.hpMax||250));
+      s.mpMax = Math.max(1, Math.floor(s.mpMax||250));
+      s.exp = Math.max(0, Number(s.exp||0));
+      s.lastTs = Number(s.lastTs||Date.now());
       return s;
     }catch{
       return structuredClone(defaultState);
     }
   }
 
-  function saveState(){
+  function save(){
     state.lastTs = Date.now();
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }
 
-  function pad3(n){
-    return String(Math.max(0, Math.floor(n))).padStart(3,"0");
-  }
+  function pad3(n){ return String(n).padStart(3,"0"); }
 
-  function handleLevelUps(){
+  function levelUpIfNeeded(){
     while(state.exp >= expNeeded){
       state.exp -= expNeeded;
       state.level += 1;
       state.hpMax += 50;
       state.mpMax += 50;
-      state.hp = state.hpMax;
-      state.mp = state.mpMax;
     }
   }
 
-  function applyOfflineProgress(){
+  function applyOffline(){
     const now = Date.now();
     const dt = Math.max(0, now - state.lastTs);
     const gained = dt * expPerMs;
     if(gained > 0){
       state.exp += gained;
-      handleLevelUps();
-      state.hp = state.hpMax;
-      state.mp = state.mpMax;
-      saveState();
+      levelUpIfNeeded();
+      save();
     }
   }
 
-  function updateUI(){
-    lvText.textContent = pad3(state.level);
+  function render(){
+    // 표시값(HP/MP는 항상 Max로 표기)
+    const hp = state.hpMax;
+    const mp = state.mpMax;
 
-    line1.textContent = state.title;
-    line2.textContent = state.name;
+    // LV
+    $("lv").textContent = pad3(state.level);
 
-    hpNums.textContent = `${state.hp}/${state.hpMax}`;
-    mpNums.textContent = `${state.mp}/${state.mpMax}`;
+    // 숫자
+    $("hpText").textContent = `${hp} / ${state.hpMax}`;
+    $("mpText").textContent = `${mp} / ${state.mpMax}`;
 
-    hpFill.style.transform = `scaleX(${state.hpMax ? state.hp/state.hpMax : 0})`;
-    mpFill.style.transform = `scaleX(${state.mpMax ? state.mp/state.mpMax : 0})`;
+    const pct = Math.min(100, (state.exp/expNeeded)*100);
+    const expShown = Math.floor(state.exp*100)/100;
+    $("expText").textContent = `EXP. ${expShown.toFixed(2)} [${pct.toFixed(2)}%]`;
 
-    const pct = Math.min(100, (state.exp / expNeeded) * 100);
-    expFill.style.transform = `scaleX(${pct/100})`;
-
-    const expDisplay = Math.floor(state.exp * 100) / 100;
-    expText.textContent = `${expDisplay.toFixed(2)} [${pct.toFixed(2)}%]`;
+    // 바
+    $("hpFill").style.transform  = `scaleX(1)`; // 항상 만땅
+    $("mpFill").style.transform  = `scaleX(1)`; // 항상 만땅
+    $("expFill").style.transform = `scaleX(${pct/100})`;
   }
 
-  // 버튼
-  $("btnRename").addEventListener("click", () => {
-    const title = prompt("타이틀(예: 배달파트너)", state.title);
-    if(title === null) return;
-    const name = prompt("이름(예: 포로리)", state.name);
-    if(name === null) return;
+  // 시작: 오프라인 진행 반영
+  applyOffline();
+  render();
 
-    state.title = (title || "").trim() || state.title;
-    state.name = (name || "").trim() || state.name;
-    saveState();
-    updateUI();
-  });
-
-  $("btnReset").addEventListener("click", () => {
-    if(!confirm("정말 초기화할까? (레벨/스탯/경험치 전부 초기화)")) return;
-    state = structuredClone(defaultState);
-    saveState();
-    updateUI();
-  });
-
-  // 시작: 오프라인 진행분 반영 후 실시간 루프
-  applyOfflineProgress();
-  updateUI();
-
-  let lastFrame = performance.now();
+  // 실시간 누적
+  let last = performance.now();
   let lastSave = performance.now();
 
   function tick(now){
-    const dt = now - lastFrame;
-    lastFrame = now;
+    const dt = now - last;
+    last = now;
 
     state.exp += dt * expPerMs;
-    handleLevelUps();
-
-    // 항상 만땅
-    state.hp = state.hpMax;
-    state.mp = state.mpMax;
-
-    updateUI();
+    levelUpIfNeeded();
+    render();
 
     if(now - lastSave > 5000){
-      saveState();
+      save();
       lastSave = now;
     }
     requestAnimationFrame(tick);
