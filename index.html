@@ -1,493 +1,3 @@
-
-
-나의 말:
-이번에는 메이프랜드(옛날 메이플 버전)UI로 웹위젯코딩을 짜보려고해 내가 보내준 이미지중에 아래쪽 LV. 001 배달파트너 포로리 HP 250/250 MP 250/250 EXP. 0[0.00%] 이런식으로 코딩으로 만들어 보려고해 시간에 지남에 따라 경험치가 올라가고 100%가되면LV. 002 이런식으로 업이 되면서 경험치가 초기화되면서 HP,MP도 50씩 증가가 되는걸 구현하고 싶어 시간당 경험치1이 올라가며 웹위젯이 활성화 될때 (즉 방송을 시작할때) 전에 멈췄던 부분부터 저장되어 진짜 나의 캐릭터를 키운다는 느낌으로 만들고 싶어
-
-ChatGPT의 말:
-좋아. “옛날 메이플(메이프랜드 느낌) 하단 상태바”를 **웹 위젯(HTML/CSS/JS)**로 만들고,
-
-시간 경과로 EXP가 자동 증가 (시간당 +1)
-
-EXP 100% → 레벨업 (LV +1)
-
-레벨업 시 EXP 초기화
-
-레벨업 시 HP/MP 최대치 +50씩 증가
-
-방송(위젯) 껐다 켜도 저장되어 이어서 성장(localStorage)
-
-하단에 LV. 001 배달파트너 포로리 HP 250/250 MP 250/250 EXP. 0[0.00%] 형태
-
-이걸 바로 구현해볼게.
-
-아래 코드를 그대로 maple_widget.html 같은 파일로 저장해서 OBS(브라우저 소스)로 띄우면 돼.
-
-<!doctype html>
-<html lang="ko">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>MapleLand Style Status Widget</title>
-  <style>
-    :root{
-      --scale: 1;
-      --w: calc(980px * var(--scale));
-      --h: calc(82px * var(--scale));
-
-      --bg1:#2b2b2b;
-      --bg2:#141414;
-      --frame:#b9a169;
-      --frame2:#7d6a3d;
-
-      --text:#f3f3f3;
-      --shadow:#000;
-
-      --hp1:#d84a4a;
-      --hp2:#8c1f1f;
-
-      --mp1:#4a6ed8;
-      --mp2:#1d2d8c;
-
-      --exp1:#ffd35a;
-      --exp2:#c99c18;
-
-      --pixel: 2px;
-      --radius: 8px;
-      --font: "Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif;
-    }
-
-    /* OBS 투명 배경 */
-    html,body{
-      margin:0;
-      background:transparent;
-      height:100%;
-    }
-
-    .wrap{
-      width: var(--w);
-      height: var(--h);
-      display:flex;
-      align-items:center;
-      justify-content:center;
-    }
-
-    .panel{
-      width: calc(var(--w) - 12px);
-      height: calc(var(--h) - 12px);
-      position:relative;
-      font-family: var(--font);
-      color: var(--text);
-      letter-spacing: 0.2px;
-
-      /* 프레임 느낌 */
-      background: linear-gradient(180deg, var(--bg1), var(--bg2));
-      border: 2px solid var(--frame);
-      border-radius: var(--radius);
-      box-shadow:
-        0 0 0 2px rgba(0,0,0,0.35) inset,
-        0 2px 12px rgba(0,0,0,0.35);
-      padding: 10px 14px;
-      box-sizing:border-box;
-    }
-
-    .topline{
-      display:flex;
-      align-items:baseline;
-      gap: 10px;
-      margin-bottom: 8px;
-      text-shadow: 1px 1px 0 var(--shadow);
-      font-weight:700;
-    }
-    .lv{
-      font-size: calc(16px * var(--scale));
-      color:#ffe6a6;
-    }
-    .title{
-      font-size: calc(16px * var(--scale));
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      flex:1;
-    }
-
-    .bars{
-      display:flex;
-      align-items:center;
-      gap: 12px;
-      font-size: calc(14px * var(--scale));
-      font-weight:700;
-      text-shadow: 1px 1px 0 var(--shadow);
-    }
-
-    .stat{
-      display:flex;
-      align-items:center;
-      gap: 8px;
-      min-width: 260px;
-    }
-
-    .label{
-      width: 38px;
-      text-align:right;
-      opacity:0.95;
-    }
-
-    .bar{
-      position:relative;
-      width: 160px;
-      height: 12px;
-      border-radius: 6px;
-      border: 1px solid rgba(255,255,255,0.18);
-      box-shadow: 0 0 0 1px rgba(0,0,0,0.35) inset;
-      overflow:hidden;
-      background: rgba(255,255,255,0.08);
-    }
-    .fill{
-      position:absolute;
-      inset:0;
-      width:100%;
-      transform-origin:left center;
-      transform: scaleX(1);
-    }
-    .hp .fill{ background: linear-gradient(180deg,var(--hp1),var(--hp2)); }
-    .mp .fill{ background: linear-gradient(180deg,var(--mp1),var(--mp2)); }
-    .exp .fill{ background: linear-gradient(180deg,var(--exp1),var(--exp2)); }
-
-    .nums{
-      min-width: 120px;
-      text-align:left;
-      font-variant-numeric: tabular-nums;
-      opacity:0.98;
-    }
-
-    .expLine{
-      display:flex;
-      align-items:center;
-      gap: 8px;
-      min-width: 360px;
-    }
-    .expText{
-      min-width: 210px;
-      font-variant-numeric: tabular-nums;
-    }
-
-    /* 작은 픽셀 느낌 테두리(선택) */
-    .panel:before{
-      content:"";
-      position:absolute;
-      inset:6px;
-      border: 1px solid rgba(185,161,105,0.35);
-      border-radius: calc(var(--radius) - 3px);
-      pointer-events:none;
-    }
-
-    /* 설정 버튼(방송 중 실수 방지용으로 숨김 가능) */
-    .controls{
-      position:absolute;
-      right: 10px;
-      top: 10px;
-      display:flex;
-      gap:6px;
-      opacity:0.9;
-    }
-    .btn{
-      font-size: 12px;
-      padding: 4px 8px;
-      border-radius: 6px;
-      border: 1px solid rgba(255,255,255,0.2);
-      background: rgba(0,0,0,0.25);
-      color: #fff;
-      cursor:pointer;
-      user-select:none;
-    }
-    .btn:hover{ background: rgba(0,0,0,0.38); }
-  </style>
-</head>
-
-<body>
-  <div class="wrap">
-    <div class="panel" id="panel">
-      <div class="controls">
-        <div class="btn" id="btnRename">이름/직업</div>
-        <div class="btn" id="btnReset">리셋</div>
-      </div>
-
-      <div class="topline">
-        <div class="lv" id="lvText">LV. 001</div>
-        <div class="title" id="nameText">배달파트너 포로리</div>
-      </div>
-
-      <div class="bars">
-        <div class="stat">
-          <div class="label">HP</div>
-          <div class="bar hp"><div class="fill" id="hpFill"></div></div>
-          <div class="nums" id="hpNums">250/250</div>
-        </div>
-
-        <div class="stat">
-          <div class="label">MP</div>
-          <div class="bar mp"><div class="fill" id="mpFill"></div></div>
-          <div class="nums" id="mpNums">250/250</div>
-        </div>
-
-        <div class="expLine">
-          <div class="label" style="width:auto;">EXP.</div>
-          <div class="bar exp" style="width:220px;"><div class="fill" id="expFill"></div></div>
-          <div class="expText" id="expText">0 [0.00%]</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-<script>
-(() => {
-  /**
-   * 저장 키
-   */
-  const STORAGE_KEY = "porori_maple_widget_v1";
-
-  /**
-   * EXP 규칙
-   * - "시간당 경험치 1" = 1 exp / 3600 sec
-   * - 레벨업 기준 expNeeded = 100 (즉 100 exp가 100%)
-   *   ※ 원하면 숫자만 바꾸면 됨
-   */
-  const expPerHour = 1;
-  const expPerMs = expPerHour / 3600000; // 1시간 = 3,600,000ms
-  const expNeeded = 100;
-
-  /**
-   * 기본 상태
-   */
-  const defaultState = {
-    job: "배달파트너",
-    name: "포로리",
-    level: 1,
-    hpMax: 250,
-    mpMax: 250,
-    // 현재 HP/MP는 항상 Max로 유지(원하면 소모 시스템도 추가 가능)
-    hp: 250,
-    mp: 250,
-    exp: 0,                 // 0 ~ expNeeded
-    lastTs: Date.now()      // 마지막 저장 시각(밀리초)
-  };
-
-  function loadState(){
-    try{
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if(!raw) return structuredClone(defaultState);
-      const obj = JSON.parse(raw);
-
-      // 누락 필드 보정
-      const s = { ...structuredClone(defaultState), ...obj };
-
-      // 이상치 방어
-      s.level = Math.max(1, Math.floor(s.level || 1));
-      s.hpMax = Math.max(1, Math.floor(s.hpMax || 250));
-      s.mpMax = Math.max(1, Math.floor(s.mpMax || 250));
-      s.hp = Math.min(s.hpMax, Math.max(0, Math.floor(s.hp ?? s.hpMax)));
-      s.mp = Math.min(s.mpMax, Math.max(0, Math.floor(s.mp ?? s.mpMax)));
-      s.exp = Math.max(0, Number(s.exp || 0));
-      s.lastTs = Number(s.lastTs || Date.now());
-      return s;
-    }catch(e){
-      return structuredClone(defaultState);
-    }
-  }
-
-  function saveState(){
-    state.lastTs = Date.now();
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }
-
-  function padLv(n){
-    // LV. 001 스타일
-    const v = String(Math.max(0, Math.floor(n))).padStart(3, "0");
-    return `LV. ${v}`;
-  }
-
-  function updateUI(){
-    // 텍스트
-    lvText.textContent = padLv(state.level);
-    nameText.textContent = `${state.job} ${state.name}`;
-
-    hpNums.textContent = `${state.hp}/${state.hpMax}`;
-    mpNums.textContent = `${state.mp}/${state.mpMax}`;
-
-    // 바(항상 만땅)
-    hpFill.style.transform = `scaleX(${state.hpMax ? (state.hp/state.hpMax) : 0})`;
-    mpFill.style.transform = `scaleX(${state.mpMax ? (state.mp/state.mpMax) : 0})`;
-
-    // EXP
-    const pct = Math.min(100, (state.exp / expNeeded) * 100);
-    expFill.style.transform = `scaleX(${pct/100})`;
-
-    // 표기: EXP. 0 [0.00%]
-    const expDisplay = Math.floor(state.exp * 100) / 100; // 소수 둘째자리까지(내림)
-    expText.textContent = `${expDisplay.toFixed(2).replace(/\.00$/,"")} [${pct.toFixed(2)}%]`;
-    // 위 줄에서 "0.00"이 싫으면, 그냥 expDisplay.toFixed(2) 그대로 쓰면 됨.
-  }
-
-  function applyOfflineProgress(){
-    // 위젯 켰을 때 마지막 저장 이후 흐른 시간만큼 EXP 누적
-    const now = Date.now();
-    const dt = Math.max(0, now - state.lastTs);
-    const gained = dt * expPerMs;
-    if(gained > 0){
-      state.exp += gained;
-      handleLevelUps();
-      // 현재 HP/MP는 Max로 유지
-      state.hp = state.hpMax;
-      state.mp = state.mpMax;
-      saveState();
-    }
-  }
-
-  function handleLevelUps(){
-    // expNeeded 이상이면 레벨업 반복 처리
-    while(state.exp >= expNeeded){
-      state.exp -= expNeeded;
-      state.level += 1;
-      state.hpMax += 50;
-      state.mpMax += 50;
-      state.hp = state.hpMax;
-      state.mp = state.mpMax;
-    }
-  }
-
-  /**
-   * 실시간 누적(정확도를 위해 requestAnimationFrame + 누적시간)
-   */
-  let lastFrame = performance.now();
-
-  function tick(now){
-    const dt = now - lastFrame;
-    lastFrame = now;
-
-    state.exp += dt * expPerMs;
-    handleLevelUps();
-    // 항상 만땅 유지
-    state.hp = state.hpMax;
-    state.mp = state.mpMax;
-
-    // UI 갱신
-    updateUI();
-
-    // 저장(너무 잦게 쓰면 부담이라 5초마다 저장)
-    if(now - lastSavePerf > 5000){
-      saveState();
-      lastSavePerf = now;
-    }
-    requestAnimationFrame(tick);
-  }
-
-  // DOM
-  const lvText   = document.getElementById("lvText");
-  const nameText = document.getElementById("nameText");
-  const hpFill   = document.getElementById("hpFill");
-  const mpFill   = document.getElementById("mpFill");
-  const expFill  = document.getElementById("expFill");
-  const hpNums   = document.getElementById("hpNums");
-  const mpNums   = document.getElementById("mpNums");
-  const expText  = document.getElementById("expText");
-
-  const btnReset  = document.getElementById("btnReset");
-  const btnRename = document.getElementById("btnRename");
-
-  // 상태 로드
-  let state = loadState();
-
-  // 오프라인 진행분 반영
-  applyOfflineProgress();
-  updateUI();
-
-  // 컨트롤
-  btnReset.addEventListener("click", () => {
-    if(!confirm("정말 초기화할까? (레벨/스탯/경험치 전부 초기화)")) return;
-    state = structuredClone(defaultState);
-    saveState();
-    updateUI();
-  });
-
-  btnRename.addEventListener("click", () => {
-    const job = prompt("직업/타이틀(예: 배달파트너)", state.job);
-    if(job === null) return;
-    const name = prompt("이름(예: 포로리)", state.name);
-    if(name === null) return;
-    state.job = (job || "").trim() || state.job;
-    state.name = (name || "").trim() || state.name;
-    saveState();
-    updateUI();
-  });
-
-  // 시작
-  let lastSavePerf = performance.now();
-  requestAnimationFrame(tick);
-})();
-</script>
-</body>
-</html>
-OBS에 넣는 법 (간단)
-위 파일을 PC에 저장 (maple_widget.html)
-
-OBS → 소스 추가 → 브라우저
-
-로컬 파일 체크 → 위 html 파일 선택
-
-크기: 대충 980 x 82 (CSS에서 바꾸고 싶으면 --scale로 전체 크기 조절 가능)
-
-커스터마이징 포인트 (원하는대로 바로 바꿀 수 있음)
-레벨업에 필요한 EXP: const expNeeded = 100;
-
-시간당 EXP 증가량: const expPerHour = 1;
-
-레벨업 시 HP/MP 증가량: state.hpMax += 50; state.mpMax += 50;
-
-텍스트 폰트/크기/색감: CSS 쪽에서 조절
-
-원하면 다음도 바로 추가해줄게(말만 해줘, 내가 코드까지 붙여서 완성해줄게):
-
-실제 메이프랜드 느낌으로 픽셀 폰트/테두리/아이콘 더 리얼하게
-
-EXP가 오를 때 반짝/사운드, 레벨업 시 효과음 + “레벨업!” 팝업
-
-HP/MP도 “회복” 개념 넣어서 방송 중 이벤트로 깎이게(후원/미션 실패 등)
-
-
-나의 말:
-업로드한 이미지
-예시를 보여줄게 이런식의 UI면 될거같아
-
-ChatGPT의 말:
-
-39s 동안 생각함
-오케이, 이 예시처럼 메이플(메이프랜드) 하단 상태바 스타일로 잡으면 딱 느낌 나와.
-
-포인트는 이거야:
-
-전체가 회색 메탈 프레임 + 안쪽 어두운 패널
-
-왼쪽 LV 박스
-
-이름 2줄(직업/이름 느낌)
-
-가운데 HP/MP/EXP 텍스트 + 바(빨강/파랑/연두)
-
-오른쪽에 EXP 숫자 EXP. 0 [0.00%] 같은 표기
-
-아래 코드는 “그 느낌”으로 **레이아웃/바/테두리(입체감)**를 CSS로 최대한 구현했고,
-기능은 네가 말한 그대로:
-
-시간당 EXP +1
-
-100%면 레벨업
-
-레벨업하면 EXP 초기화 + HP/MP 최대치 50씩 증가
-
-방송 껐다 켜도 localStorage로 이어서 성장
-
-그대로 써봐 👇 (OBS 브라우저 소스에 로컬파일로 넣기)
-
 <!doctype html>
 <html lang="ko">
 <head>
@@ -653,7 +163,249 @@ ChatGPT의 말:
     position:absolute;
     inset:0;
     transform-origin:left center;
+    transform: scaleX(1);
+  }
+  .hpFill{ background: linear-gradient(180deg, #ff7a7a, var(--hp)); }
+  .mpFill{ background: linear-gradient(180deg, #6aa0ff, var(--mp)); }
+  .expFill{ background: linear-gradient(180deg, #b6ff86, var(--exp)); }
 
+  .nums{
+    width: calc(140px * var(--scale));
+    font-variant-numeric: tabular-nums;
+    font-weight:900;
+    font-size: calc(13px * var(--scale));
+    text-align:left;
+    white-space:nowrap;
+  }
 
+  .expText{
+    width: calc(190px * var(--scale));
+    text-align:left;
+    font-variant-numeric: tabular-nums;
+    font-weight:900;
+    font-size: calc(13px * var(--scale));
+    white-space:nowrap;
+  }
 
-ChatGPT가 아직 응답을 생성 중입니다…
+  /* 옵션 버튼(원하면 지워도 됨) */
+  .controls{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    flex: 0 0 auto;
+  }
+  .btn{
+    font-size: 12px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.18);
+    background: rgba(0,0,0,0.22);
+    color:#fff;
+    cursor:pointer;
+    user-select:none;
+  }
+  .btn:hover{ background: rgba(0,0,0,0.35); }
+</style>
+</head>
+
+<body>
+<div class="wrap">
+  <div class="frame">
+    <div class="panel">
+      <div class="lvBox">
+        <div class="lvLabel">LV.</div>
+        <div class="lvValue" id="lvText">001</div>
+      </div>
+
+      <div class="nameBlock">
+        <div class="nameLine1" id="line1">배달파트너</div>
+        <div class="nameLine2" id="line2">포로리</div>
+      </div>
+
+      <div class="stats">
+        <div class="row">
+          <div class="tag">HP</div>
+          <div class="bar"><div class="fill hpFill" id="hpFill"></div></div>
+          <div class="nums" id="hpNums">250/250</div>
+        </div>
+        <div class="row">
+          <div class="tag">MP</div>
+          <div class="bar"><div class="fill mpFill" id="mpFill"></div></div>
+          <div class="nums" id="mpNums">250/250</div>
+        </div>
+        <div class="row">
+          <div class="tag">EXP</div>
+          <div class="bar"><div class="fill expFill" id="expFill"></div></div>
+          <div class="expText" id="expText">0 [0.00%]</div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <div class="btn" id="btnRename">이름 수정</div>
+        <div class="btn" id="btnReset">초기화</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const STORAGE_KEY = "porori_maple_bottom_ui_v1";
+
+  // 규칙
+  const expPerHour = 1;            // 시간당 EXP +1
+  const expNeeded = 100;           // 100이면 100%
+  const expPerMs = expPerHour / 3600000;
+
+  const defaultState = {
+    title: "배달파트너",
+    name: "포로리",
+    level: 1,
+
+    hpMax: 250,
+    mpMax: 250,
+    hp: 250,
+    mp: 250,
+
+    exp: 0,          // 0~100
+    lastTs: Date.now()
+  };
+
+  const $ = (id) => document.getElementById(id);
+  const lvText = $("lvText");
+  const line1 = $("line1");
+  const line2 = $("line2");
+  const hpFill = $("hpFill");
+  const mpFill = $("mpFill");
+  const expFill = $("expFill");
+  const hpNums = $("hpNums");
+  const mpNums = $("mpNums");
+  const expText = $("expText");
+
+  let state = loadState();
+
+  function loadState(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw) return structuredClone(defaultState);
+      const obj = JSON.parse(raw);
+      const s = { ...structuredClone(defaultState), ...obj };
+
+      s.level = Math.max(1, Math.floor(s.level || 1));
+      s.hpMax = Math.max(1, Math.floor(s.hpMax || 250));
+      s.mpMax = Math.max(1, Math.floor(s.mpMax || 250));
+      s.hp = s.hpMax;
+      s.mp = s.mpMax;
+
+      s.exp = Math.max(0, Number(s.exp || 0));
+      s.lastTs = Number(s.lastTs || Date.now());
+      return s;
+    }catch{
+      return structuredClone(defaultState);
+    }
+  }
+
+  function saveState(){
+    state.lastTs = Date.now();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }
+
+  function pad3(n){
+    return String(Math.max(0, Math.floor(n))).padStart(3,"0");
+  }
+
+  function handleLevelUps(){
+    while(state.exp >= expNeeded){
+      state.exp -= expNeeded;
+      state.level += 1;
+      state.hpMax += 50;
+      state.mpMax += 50;
+      state.hp = state.hpMax;
+      state.mp = state.mpMax;
+    }
+  }
+
+  function applyOfflineProgress(){
+    const now = Date.now();
+    const dt = Math.max(0, now - state.lastTs);
+    const gained = dt * expPerMs;
+    if(gained > 0){
+      state.exp += gained;
+      handleLevelUps();
+      state.hp = state.hpMax;
+      state.mp = state.mpMax;
+      saveState();
+    }
+  }
+
+  function updateUI(){
+    lvText.textContent = pad3(state.level);
+
+    line1.textContent = state.title;
+    line2.textContent = state.name;
+
+    hpNums.textContent = `${state.hp}/${state.hpMax}`;
+    mpNums.textContent = `${state.mp}/${state.mpMax}`;
+
+    hpFill.style.transform = `scaleX(${state.hpMax ? state.hp/state.hpMax : 0})`;
+    mpFill.style.transform = `scaleX(${state.mpMax ? state.mp/state.mpMax : 0})`;
+
+    const pct = Math.min(100, (state.exp / expNeeded) * 100);
+    expFill.style.transform = `scaleX(${pct/100})`;
+
+    const expDisplay = Math.floor(state.exp * 100) / 100;
+    expText.textContent = `${expDisplay.toFixed(2)} [${pct.toFixed(2)}%]`;
+  }
+
+  // 버튼
+  $("btnRename").addEventListener("click", () => {
+    const title = prompt("타이틀(예: 배달파트너)", state.title);
+    if(title === null) return;
+    const name = prompt("이름(예: 포로리)", state.name);
+    if(name === null) return;
+
+    state.title = (title || "").trim() || state.title;
+    state.name = (name || "").trim() || state.name;
+    saveState();
+    updateUI();
+  });
+
+  $("btnReset").addEventListener("click", () => {
+    if(!confirm("정말 초기화할까? (레벨/스탯/경험치 전부 초기화)")) return;
+    state = structuredClone(defaultState);
+    saveState();
+    updateUI();
+  });
+
+  // 시작: 오프라인 진행분 반영 후 실시간 루프
+  applyOfflineProgress();
+  updateUI();
+
+  let lastFrame = performance.now();
+  let lastSave = performance.now();
+
+  function tick(now){
+    const dt = now - lastFrame;
+    lastFrame = now;
+
+    state.exp += dt * expPerMs;
+    handleLevelUps();
+
+    // 항상 만땅
+    state.hp = state.hpMax;
+    state.mp = state.mpMax;
+
+    updateUI();
+
+    if(now - lastSave > 5000){
+      saveState();
+      lastSave = now;
+    }
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>
