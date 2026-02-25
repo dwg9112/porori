@@ -1,3 +1,27 @@
+
+
+나의 말:
+이번에는 메이프랜드(옛날 메이플 버전)UI로 웹위젯코딩을 짜보려고해 내가 보내준 이미지중에 아래쪽 LV. 001 배달파트너 포로리 HP 250/250 MP 250/250 EXP. 0[0.00%] 이런식으로 코딩으로 만들어 보려고해 시간에 지남에 따라 경험치가 올라가고 100%가되면LV. 002 이런식으로 업이 되면서 경험치가 초기화되면서 HP,MP도 50씩 증가가 되는걸 구현하고 싶어 시간당 경험치1이 올라가며 웹위젯이 활성화 될때 (즉 방송을 시작할때) 전에 멈췄던 부분부터 저장되어 진짜 나의 캐릭터를 키운다는 느낌으로 만들고 싶어
+
+ChatGPT의 말:
+좋아. “옛날 메이플(메이프랜드 느낌) 하단 상태바”를 **웹 위젯(HTML/CSS/JS)**로 만들고,
+
+시간 경과로 EXP가 자동 증가 (시간당 +1)
+
+EXP 100% → 레벨업 (LV +1)
+
+레벨업 시 EXP 초기화
+
+레벨업 시 HP/MP 최대치 +50씩 증가
+
+방송(위젯) 껐다 켜도 저장되어 이어서 성장(localStorage)
+
+하단에 LV. 001 배달파트너 포로리 HP 250/250 MP 250/250 EXP. 0[0.00%] 형태
+
+이걸 바로 구현해볼게.
+
+아래 코드를 그대로 maple_widget.html 같은 파일로 저장해서 OBS(브라우저 소스)로 띄우면 돼.
+
 <!doctype html>
 <html lang="ko">
 <head>
@@ -403,3 +427,233 @@
 </script>
 </body>
 </html>
+OBS에 넣는 법 (간단)
+위 파일을 PC에 저장 (maple_widget.html)
+
+OBS → 소스 추가 → 브라우저
+
+로컬 파일 체크 → 위 html 파일 선택
+
+크기: 대충 980 x 82 (CSS에서 바꾸고 싶으면 --scale로 전체 크기 조절 가능)
+
+커스터마이징 포인트 (원하는대로 바로 바꿀 수 있음)
+레벨업에 필요한 EXP: const expNeeded = 100;
+
+시간당 EXP 증가량: const expPerHour = 1;
+
+레벨업 시 HP/MP 증가량: state.hpMax += 50; state.mpMax += 50;
+
+텍스트 폰트/크기/색감: CSS 쪽에서 조절
+
+원하면 다음도 바로 추가해줄게(말만 해줘, 내가 코드까지 붙여서 완성해줄게):
+
+실제 메이프랜드 느낌으로 픽셀 폰트/테두리/아이콘 더 리얼하게
+
+EXP가 오를 때 반짝/사운드, 레벨업 시 효과음 + “레벨업!” 팝업
+
+HP/MP도 “회복” 개념 넣어서 방송 중 이벤트로 깎이게(후원/미션 실패 등)
+
+
+나의 말:
+업로드한 이미지
+예시를 보여줄게 이런식의 UI면 될거같아
+
+ChatGPT의 말:
+
+39s 동안 생각함
+오케이, 이 예시처럼 메이플(메이프랜드) 하단 상태바 스타일로 잡으면 딱 느낌 나와.
+
+포인트는 이거야:
+
+전체가 회색 메탈 프레임 + 안쪽 어두운 패널
+
+왼쪽 LV 박스
+
+이름 2줄(직업/이름 느낌)
+
+가운데 HP/MP/EXP 텍스트 + 바(빨강/파랑/연두)
+
+오른쪽에 EXP 숫자 EXP. 0 [0.00%] 같은 표기
+
+아래 코드는 “그 느낌”으로 **레이아웃/바/테두리(입체감)**를 CSS로 최대한 구현했고,
+기능은 네가 말한 그대로:
+
+시간당 EXP +1
+
+100%면 레벨업
+
+레벨업하면 EXP 초기화 + HP/MP 최대치 50씩 증가
+
+방송 껐다 켜도 localStorage로 이어서 성장
+
+그대로 써봐 👇 (OBS 브라우저 소스에 로컬파일로 넣기)
+
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>MapleLand Bottom UI Widget</title>
+<style>
+  :root{
+    --scale: 1;               /* 전체 크기 조절 */
+    --w: calc(1280px * var(--scale));
+    --h: calc(86px * var(--scale));
+
+    --frame1:#cfd3d8;
+    --frame2:#8f969e;
+    --inner1:#3a3f45;
+    --inner2:#22262b;
+
+    --text:#f3f6fb;
+    --shadow:#0b0d10;
+
+    --hp:#d84a4a;
+    --mp:#3a74d6;
+    --exp:#7fd34a;
+
+    --thin: 1px;
+    --r: 6px;
+
+    --font: "Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif;
+  }
+
+  html,body{ margin:0; background:transparent; }
+  .wrap{
+    width:var(--w);
+    height:var(--h);
+    display:flex;
+    align-items:flex-end;
+    justify-content:center;
+  }
+
+  /* 메탈 프레임 느낌 */
+  .frame{
+    width: calc(var(--w) - 8px);
+    height: calc(var(--h) - 8px);
+    background: linear-gradient(180deg, var(--frame1), #b6bcc3 40%, var(--frame2));
+    border-radius: var(--r);
+    box-shadow:
+      0 2px 10px rgba(0,0,0,0.35),
+      0 0 0 2px rgba(0,0,0,0.25) inset;
+    padding: 6px;
+    box-sizing:border-box;
+  }
+
+  .panel{
+    width:100%;
+    height:100%;
+    background: linear-gradient(180deg, var(--inner1), var(--inner2));
+    border-radius: calc(var(--r) - 2px);
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,0.12) inset,
+      0 0 0 2px rgba(0,0,0,0.35) inset;
+    display:flex;
+    align-items:center;
+    gap: 10px;
+    padding: 8px 10px;
+    box-sizing:border-box;
+    font-family: var(--font);
+    color: var(--text);
+    text-shadow: 1px 1px 0 var(--shadow);
+  }
+
+  /* LV 박스 */
+  .lvBox{
+    width: calc(92px * var(--scale));
+    height: calc(58px * var(--scale));
+    border-radius: 6px;
+    background: linear-gradient(180deg,#1f2328,#101316);
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,0.08) inset,
+      0 0 0 2px rgba(0,0,0,0.45) inset;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+    gap: 4px;
+    flex: 0 0 auto;
+  }
+  .lvLabel{
+    font-weight:800;
+    font-size: calc(12px * var(--scale));
+    color:#d8dde6;
+    opacity:0.9;
+    letter-spacing:0.5px;
+  }
+  .lvValue{
+    font-weight:900;
+    font-size: calc(18px * var(--scale));
+    color:#ffd98a;
+    letter-spacing:0.8px;
+  }
+
+  /* 이름 영역(메이플처럼 2줄) */
+  .nameBlock{
+    width: calc(250px * var(--scale));
+    display:flex;
+    flex-direction:column;
+    gap: 2px;
+    flex: 0 0 auto;
+  }
+  .nameLine1{
+    font-weight:800;
+    font-size: calc(14px * var(--scale));
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .nameLine2{
+    font-weight:800;
+    font-size: calc(13px * var(--scale));
+    color:#cbd6ff;
+    opacity:0.95;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  /* 스탯 영역 */
+  .stats{
+    display:flex;
+    flex-direction:column;
+    gap: 6px;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .row{
+    display:flex;
+    align-items:center;
+    gap: 8px;
+    min-width:0;
+  }
+
+  .tag{
+    width: calc(38px * var(--scale));
+    text-align:right;
+    font-weight:900;
+    font-size: calc(13px * var(--scale));
+    opacity:0.95;
+  }
+
+  .bar{
+    position:relative;
+    height: calc(10px * var(--scale));
+    flex: 1 1 auto;
+    min-width: 140px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.08);
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,0.12) inset,
+      0 0 0 2px rgba(0,0,0,0.35) inset;
+    overflow:hidden;
+  }
+  .fill{
+    position:absolute;
+    inset:0;
+    transform-origin:left center;
+
+
+
+ChatGPT가 아직 응답을 생성 중입니다…
